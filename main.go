@@ -1,38 +1,56 @@
 package main
 
 import (
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/viveksingh-01/learn-go-microservices/handlers"
 )
 
-// This is the main function, the entry point of our Go program. Execution always begins here.
 func main() {
 
 	// Creates an instance of the Hello handler.
-	// &handlers.Hello{} creates a pointer (&) to a new instance of the Hello struct.
-	// This pointer 'hh' will hold the memory address of the Hello struct object.
 	hh := &handlers.Hello{}
 
 	// Creates a new instance of a ServeMux
 	sm := http.NewServeMux()
 
-	// sm.Handle("/", hh) registers the HTTP handler hh (our Hello handler) to
-	// handle requests that match the pattern '/'
-	// The second argument is the handler itself.
-	// Since the Hello struct has a ServeHTTP method, its pointer hh satisfies the http.Handler interface.
+	// Registers the Hello handler to handle all incoming requests to the root path (/).
 	sm.Handle("/", hh)
 
-	// The second argument sm is the ServeMux, which tells the HTTP server to use our
-	// custom router sm to handle incoming requests and dispatch them to the appropriate handlers.
-	http.ListenAndServe(":9090", sm)
+	s := &http.Server{
+
+		// This specifies the network address the server should listen on.
+		// ":9090" means it will listen on all available network interfaces on port 9090.
+		Addr: ":9090",
+
+		// Tells the server to use our custom router to determine which handler
+		// should handle each incoming request.
+		Handler: sm,
+
+		// This sets the maximum amount of time an idle (keep-alive) connection will
+		// remain open before the server closes it.
+		// In this case, it's set to 120 seconds (2 minutes).
+		// This helps prevent resource exhaustion from inactive connections
+		IdleTimeout: 120 * time.Second,
+
+		// This sets the maximum duration for reading the entire request, including the body.
+		// If the client takes longer than 1 second to send the full request,
+		// the server will time out and close the connection.
+		// This helps protect against slow or malicious clients.
+		ReadTimeout: 1 * time.Second,
+
+		// This sets the maximum duration for writing the response back to the client.
+		// If the server takes longer than 1 second to send the complete response,
+		// it will time out and close the connection.
+		// This also helps prevent issues with slow clients.
+		WriteTimeout: 1 * time.Second,
+	}
+
+	// Starts the HTTP server using the configuration we defined in our custom server 's'.
+	err := s.ListenAndServe()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
-
-// ServeMux:
-// - An HTTP request multiplexer.
-// - It matches the URL of each incoming request against a list of registered patterns and calls
-//   the handler for the pattern that most closely matches the URL.
-
-// Handler:
-// - An Interface which responds to HTTP requests.
-// - Any struct with method ServeHTTP(ResponseWriter, *Request) will implement Handler interface.
